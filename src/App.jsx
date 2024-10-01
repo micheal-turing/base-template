@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const FruitSelector = () => {
   const [selectedFruit, setSelectedFruit] = useState('');
 
+  
   return (
     <div className="flex justify-center items-center h-screen">
       <Card className="w-[350px]">
