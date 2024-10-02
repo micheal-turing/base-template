@@ -12,7 +12,6 @@ const predefinedExercises = [
   { id: 1, name: "Push-ups", category: "Chest" },
   { id: 2, name: "Squats", category: "Legs" },
   { id: 3, name: "Pull-ups", category: "Back" },
-  
 ];
 
 const exerciseCategories = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Cardio", "Other"];
@@ -43,6 +42,13 @@ const RoutineBuilder = ({ exercises, routine, setRoutine }) => {
     }
   };
 
+  const handleInputChange = (index, field, value) => {
+    const newRoutine = [...routine];
+    // Convert empty string to 0, otherwise parse the value
+    newRoutine[index][field] = value === "" ? 0 : (field === "weight" ? parseFloat(value) : parseInt(value));
+    setRoutine(newRoutine);
+  };
+
   return (
     <Card className="mb-4">
       <CardHeader>
@@ -62,12 +68,8 @@ const RoutineBuilder = ({ exercises, routine, setRoutine }) => {
                 <Input
                   id={`sets-${index}`}
                   type="number"
-                  value={exercise.sets}
-                  onChange={(e) => {
-                    const newRoutine = [...routine];
-                    newRoutine[index].sets = parseInt(e.target.value);
-                    setRoutine(newRoutine);
-                  }}
+                  value={exercise.sets || ""}
+                  onChange={(e) => handleInputChange(index, "sets", e.target.value)}
                   className="w-full"
                 />
               </div>
@@ -76,12 +78,8 @@ const RoutineBuilder = ({ exercises, routine, setRoutine }) => {
                 <Input
                   id={`reps-${index}`}
                   type="number"
-                  value={exercise.reps}
-                  onChange={(e) => {
-                    const newRoutine = [...routine];
-                    newRoutine[index].reps = parseInt(e.target.value);
-                    setRoutine(newRoutine);
-                  }}
+                  value={exercise.reps || ""}
+                  onChange={(e) => handleInputChange(index, "reps", e.target.value)}
                   className="w-full"
                 />
               </div>
@@ -90,12 +88,8 @@ const RoutineBuilder = ({ exercises, routine, setRoutine }) => {
                 <Input
                   id={`weight-${index}`}
                   type="number"
-                  value={exercise.weight}
-                  onChange={(e) => {
-                    const newRoutine = [...routine];
-                    newRoutine[index].weight = parseFloat(e.target.value);
-                    setRoutine(newRoutine);
-                  }}
+                  value={exercise.weight || ""}
+                  onChange={(e) => handleInputChange(index, "weight", e.target.value)}
                   className="w-full"
                 />
               </div>
