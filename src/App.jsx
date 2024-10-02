@@ -1,375 +1,315 @@
-import React, { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import React, { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent, DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from "@/components/ui/alert-dialog";
 
-const initialTasks = [
-  {
-    id: 1,
-    title: "Implement login",
-    status: "To Do",
-    priority: "High",
-    dueDate: "2023-10-15",
-  },
-  {
-    id: 2,
-    title: "Design homepage",
-    status: "In Progress",
-    priority: "Medium",
-    dueDate: "2023-10-20",
-  },
-  {
-    id: 3,
-    title: "Test API endpoints",
-    status: "Review",
-    priority: "Low",
-    dueDate: "2023-10-18",
-  },
-  {
-    id: 4,
-    title: "Deploy to production",
-    status: "Done",
-    priority: "High",
-    dueDate: "2023-10-25",
-  },
+const predefinedExercises = [
+  { id: 1, name: "Push-ups", category: "Chest" },
+  { id: 2, name: "Squats", category: "Legs" },
+  { id: 3, name: "Pull-ups", category: "Back" },
 ];
 
-const columns = ["To Do", "In Progress", "Review", "Done"];
+const exerciseCategories = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Cardio", "Other"];
 
-const Task = ({ task, openTaskModal, moveTask }) => {
+const ExerciseSelector = ({ exercises, onSelect }) => (
+  <Select onValueChange={onSelect}>
+    <SelectTrigger className="w-full">
+      <SelectValue placeholder="Select an exercise" />
+    </SelectTrigger>
+    <SelectContent>
+      {exercises.map((exercise) => (
+        <SelectItem key={exercise.id} value={exercise.id.toString()}>
+          {exercise.name}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+);
 
-  const handleDragStart = (e) => {
-    e.dataTransfer.setData("text/plain", JSON.stringify(task));
-  };
+const RoutineBuilder = ({ exercises, routine, setRoutine }) => {
+  const [selectedExercise, setSelectedExercise] = useState(null);
 
-  return (
-    <div
-      className="p-2 mb-2 bg-white rounded shadow cursor-move"
-      draggable="true"
-      onDragStart={handleDragStart}
-      onClick={() => openTaskModal(task)}
-    >
-      <h3 className="font-semibold">{task.title}</h3>
-      <p className="text-sm text-gray-600">Priority: {task.priority}</p>
-      <p className="text-sm text-gray-600">Due: {task.dueDate}</p>
-      <div className="mt-2 flex justify-between">
-        {task.status !== "To Do" && (
-          <Button size="sm" onClick={(e) => { e.stopPropagation(); moveTask(task.id, columns[columns.indexOf(task.status) - 1]); }}>
-            ←
-          </Button>
-        )}
-        {task.status !== "Done" && (
-          <Button size="sm" onClick={(e) => { e.stopPropagation(); moveTask(task.id, columns[columns.indexOf(task.status) + 1]); }}>
-            →
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const Column = ({ status, tasks, openTaskModal, moveTask }) => {
-  const [isOver, setIsOver] = useState(false);
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsOver(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsOver(false);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsOver(false);
-    const taskData = e.dataTransfer.getData("text/plain");
-    if (taskData) {
-      const droppedTask = JSON.parse(taskData);
-      if (droppedTask.status !== status) {
-        moveTask(droppedTask.id, status);
-      }
+  const addExerciseToRoutine = () => {
+    if (selectedExercise) {
+      const exercise = exercises.find((e) => e.id === parseInt(selectedExercise));
+      setRoutine([...routine, { ...exercise, sets: 3, reps: 10, weight: 0 }]);
+      setSelectedExercise(null);
     }
   };
 
   return (
-    <div
-      className={`bg-gray-100 p-2 rounded min-h-[200px] ${
-        isOver ? "border-2 border-blue-500" : ""
-      }`}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
-      <h2 className="font-bold mb-2">{status}</h2>
-      {tasks.map((task) => (
-        <Task
-          key={task.id}
-          task={task}
-          openTaskModal={openTaskModal}
-          moveTask={moveTask}
-        />
-      ))}
-    </div>
-  );
-};
-
-const Board = ({ tasks, openTaskModal, moveTask }) => {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {columns.map((status) => (
-        <Column
-          key={status}
-          status={status}
-          tasks={tasks.filter((task) => task.status === status)}
-          openTaskModal={openTaskModal}
-          moveTask={moveTask}
-        />
-      ))}
-    </div>
-  );
-};
-
-const TaskModal = ({ task, onClose, onSave, onDelete }) => {
-  const [editedTask, setEditedTask] = useState(
-    task || { title: "", description: "", priority: "Medium", dueDate: "" }
-  );
-
-  const handleSave = () => {
-    if (!editedTask.title.trim()) {
-      alert("Title is required");
-      return;
-    }
-    onSave(editedTask);
-    onClose();
-  };
-
-  return (
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>{task ? "Edit Task" : "Create Task"}</DialogTitle>
-        <DialogDescription>
-          {task
-            ? "Update the details of your task below."
-            : "Fill in the form to create a new task."}
-        </DialogDescription>
-      </DialogHeader>
-      <div className="space-y-4">
-        <div>
-          <Label htmlFor="title">Title</Label>
-          <Input
-            id="title"
-            value={editedTask.title}
-            onChange={(e) =>
-              setEditedTask({ ...editedTask, title: e.target.value })
-            }
-          />
-        </div>
-        <div>
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            value={editedTask.description || ""}
-            onChange={(e) =>
-              setEditedTask({ ...editedTask, description: e.target.value })
-            }
-          />
-        </div>
-        <div>
-          <Label htmlFor="priority">Priority</Label>
-          <Select
-            value={editedTask.priority}
-            onValueChange={(value) =>
-              setEditedTask({ ...editedTask, priority: value })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Low">Low</SelectItem>
-              <SelectItem value="Medium">Medium</SelectItem>
-              <SelectItem value="High">High</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="dueDate">Due Date</Label>
-          <Input
-            id="dueDate"
-            type="date"
-            value={editedTask.dueDate}
-            onChange={(e) =>
-              setEditedTask({ ...editedTask, dueDate: e.target.value })
-            }
-          />
-        </div>
-        <div className="flex justify-between">
-          <Button onClick={handleSave}>Save</Button>
-          {task && (
-            <Button variant="destructive" onClick={() => onDelete(task.id)}>
-              Delete
-            </Button>
-          )}
-        </div>
-      </div>
-    </DialogContent>
-  );
-};
-
-const FilterBar = ({ onFilterChange }) => {
-  return (
-    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mb-4">
-      <Input
-        placeholder="Search tasks"
-        onChange={(e) => onFilterChange({ search: e.target.value })}
-      />
-      <Select
-        onValueChange={(value) => onFilterChange({ priority: value })}
-        defaultValue="all"
-      >
-        <SelectTrigger>
-          <SelectValue placeholder="Priority" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Priorities</SelectItem>
-          <SelectItem value="Low">Low</SelectItem>
-          <SelectItem value="Medium">Medium</SelectItem>
-          <SelectItem value="High">High</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
-  );
-};
-
-const ActivityLog = ({ activities }) => {
-  return (
-    <Card className="mt-4">
+    <Card className="mb-4">
       <CardHeader>
-        <CardTitle>Activity Log</CardTitle>
+        <CardTitle>Build Your Routine</CardTitle>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[200px]">
-          {activities.map((activity, index) => (
-            <p key={index} className="mb-2">
-              {activity}
-            </p>
-          ))}
-        </ScrollArea>
+        <div className="flex mb-4">
+          <ExerciseSelector exercises={exercises} onSelect={setSelectedExercise} />
+          <Button onClick={addExerciseToRoutine} className="ml-2">Add</Button>
+        </div>
+        {routine.map((exercise, index) => (
+          <Card key={index} className="mb-4 p-4">
+            <h4 className="font-bold mb-2">{exercise.name}</h4>
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <div>
+                <Label htmlFor={`sets-${index}`}>Sets</Label>
+                <Input
+                  id={`sets-${index}`}
+                  type="number"
+                  value={exercise.sets}
+                  onChange={(e) => {
+                    const newRoutine = [...routine];
+                    newRoutine[index].sets = parseInt(e.target.value);
+                    setRoutine(newRoutine);
+                  }}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <Label htmlFor={`reps-${index}`}>Reps</Label>
+                <Input
+                  id={`reps-${index}`}
+                  type="number"
+                  value={exercise.reps}
+                  onChange={(e) => {
+                    const newRoutine = [...routine];
+                    newRoutine[index].reps = parseInt(e.target.value);
+                    setRoutine(newRoutine);
+                  }}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <Label htmlFor={`weight-${index}`}>Weight (kg)</Label>
+                <Input
+                  id={`weight-${index}`}
+                  type="number"
+                  value={exercise.weight}
+                  onChange={(e) => {
+                    const newRoutine = [...routine];
+                    newRoutine[index].weight = parseFloat(e.target.value);
+                    setRoutine(newRoutine);
+                  }}
+                  className="w-full"
+                />
+              </div>
+            </div>
+            <Button
+              onClick={() => {
+                const newRoutine = routine.filter((_, i) => i !== index);
+                setRoutine(newRoutine);
+              }}
+              variant="destructive"
+              size="sm"
+            >
+              Remove
+            </Button>
+          </Card>
+        ))}
       </CardContent>
     </Card>
   );
 };
 
-export default function App() {
-  const [tasks, setTasks] = useState(initialTasks);
-  const [nextId, setNextId] = useState(5);
-  const [filter, setFilter] = useState({});
-  const [activities, setActivities] = useState([]);
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+const WorkoutSession = ({ routine, onComplete }) => {
+  const [progress, setProgress] = useState(routine.map(() => ({ completed: false })));
 
-  const addActivity = (activity) => {
-    setActivities((prev) => [
-      `${new Date().toLocaleString()}: ${activity}`,
-      ...prev,
-    ]);
+  const handleSetComplete = (index) => {
+    const newProgress = [...progress];
+    newProgress[index].completed = true;
+    setProgress(newProgress);
   };
-
-  const moveTask = (id, newStatus) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === id ? { ...task, status: newStatus } : task
-      )
-    );
-    addActivity(`Task ${id} moved to ${newStatus}`);
-    setSelectedTask(null);
-  };
-
-  const saveTask = (editedTask) => {
-    if (editedTask.id) {
-      setTasks((prevTasks) =>
-        prevTasks.map((task) => (task.id === editedTask.id ? editedTask : task))
-      );
-      addActivity(`Task ${editedTask.id} updated`);
-    } else {
-      const newTask = { ...editedTask, id: nextId, status: "To Do" };
-      setTasks((prevTasks) => [...prevTasks, newTask]);
-      setNextId((prev) => prev + 1);
-      addActivity(`New task created: ${newTask.title}`);
-    }
-    setIsCreateModalOpen(false);
-  };
-
-  const deleteTask = (id) => {
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
-    addActivity(`Task ${id} deleted`);
-    setSelectedTask(null);
-  };
-
-  const filteredTasks = tasks.filter((task) => {
-    return (
-      (!filter.search ||
-        task.title.toLowerCase().includes(filter.search.toLowerCase())) &&
-      (!filter.priority ||
-        filter.priority === "all" ||
-        task.priority === filter.priority)
-    );
-  });
 
   return (
-    <div className="p-4 max-w-7xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Task Management App</h1>
-      <FilterBar onFilterChange={setFilter} />
-      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen} >
-        <DialogTrigger asChild>
-          <Button className="mb-4">Create Task</Button>
-        </DialogTrigger>
-        <TaskModal
-          task={null}
-          onClose={() => setIsCreateModalOpen(false)}
-          onSave={saveTask}
-          onDelete={deleteTask}
-        />
-      </Dialog>
-      <Board
-        tasks={filteredTasks}
-        openTaskModal={setSelectedTask}
-        moveTask={moveTask}
-      />
-      <ActivityLog activities={activities} />
-      {selectedTask && (
-        <Dialog open={!!selectedTask} onOpenChange={() => setSelectedTask(null)}>
-          <TaskModal
-            task={selectedTask}
-            onClose={() => setSelectedTask(null)}
-            onSave={saveTask}
-            onDelete={deleteTask}
-          />
-        </Dialog>
-      )}
+    <div>
+      <h2 className="text-xl font-bold mb-4">Current Workout</h2>
+      {routine.map((exercise, index) => (
+        <Card key={index} className="mb-4">
+          <CardHeader>
+            <CardTitle>{exercise.name}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>Sets: {exercise.sets}, Reps: {exercise.reps}, Weight: {exercise.weight}kg</p>
+            <Button
+              onClick={() => handleSetComplete(index)}
+              disabled={progress[index].completed}
+              className="mt-2"
+            >
+              {progress[index].completed ? "Completed" : "Mark as Complete"}
+            </Button>
+          </CardContent>
+        </Card>
+      ))}
+      <Button onClick={onComplete} disabled={!progress.every((p) => p.completed)}>
+        Finish Workout
+      </Button>
     </div>
   );
-}
+};
+
+const WorkoutSummary = ({ routine }) => {
+  const totalVolume = routine.reduce(
+    (acc, exercise) => acc + exercise.sets * exercise.reps * exercise.weight,
+    0
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Workout Summary</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>Total exercises: {routine.length}</p>
+        <p>Total volume lifted: {totalVolume}kg</p>
+        <h3 className="font-bold mt-2">Areas of focus:</h3>
+        <ul>
+          {[...new Set(routine.map((exercise) => exercise.category))].map((category) => (
+            <li key={category}>{category}</li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+};
+
+const App = () => {
+  const [exercises, setExercises] = useState(predefinedExercises);
+  const [routine, setRoutine] = useState([]);
+  const [workoutHistory, setWorkoutHistory] = useState([]);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+  const [newExerciseName, setNewExerciseName] = useState("");
+  const [newExerciseCategory, setNewExerciseCategory] = useState("");
+
+  const addCustomExercise = useCallback(() => {
+    if (newExerciseName && newExerciseCategory) {
+      const newExercise = {
+        id: exercises.length + 1,
+        name: newExerciseName,
+        category: newExerciseCategory,
+      };
+      setExercises([...exercises, newExercise]);
+      setNewExerciseName("");
+      setNewExerciseCategory("");
+    }
+  }, [exercises, newExerciseName, newExerciseCategory]);
+
+  const completeWorkout = useCallback(() => {
+    const newWorkout = {
+      date: new Date().toLocaleDateString(),
+      routine: routine,
+    };
+    setWorkoutHistory([newWorkout, ...workoutHistory]);
+    setRoutine([]);
+
+    const totalVolume = routine.reduce(
+      (acc, exercise) => acc + exercise.sets * exercise.reps * exercise.weight,
+      0
+    );
+    const previousBest = Math.max(
+      ...workoutHistory.map((workout) =>
+        workout.routine.reduce(
+          (acc, exercise) => acc + exercise.sets * exercise.reps * exercise.weight,
+          0
+        )
+      ),
+      0
+    );
+    if (totalVolume > previousBest) {
+      setAlertMessage("Congratulations! You've achieved a new personal best in total volume lifted!");
+      setShowAlert(true);
+    }
+  }, [routine, workoutHistory]);
+
+  return (
+    <div className="container mx-auto p-4 max-w-md">
+      <h1 className="text-2xl font-bold mb-4">Workout Planner & Tracker</h1>
+      <Tabs defaultValue="planner">
+        <TabsList className="w-full mb-4">
+          <TabsTrigger value="planner" className="flex-1">Planner</TabsTrigger>
+          <TabsTrigger value="workout" className="flex-1">Workout</TabsTrigger>
+          <TabsTrigger value="history" className="flex-1">History</TabsTrigger>
+        </TabsList>
+        <TabsContent value="planner">
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle>Custom Exercise</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <Label htmlFor="new-exercise-name">Exercise Name</Label>
+                  <Input
+                    id="new-exercise-name"
+                    value={newExerciseName}
+                    onChange={(e) => setNewExerciseName(e.target.value)}
+                    placeholder="New exercise name"
+                    className="mb-2"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="new-exercise-category">Category</Label>
+                  <Select value={newExerciseCategory} onValueChange={setNewExerciseCategory}>
+                    <SelectTrigger id="new-exercise-category">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {exerciseCategories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Button onClick={addCustomExercise} className="w-full">
+                Add Custom Exercise
+              </Button>
+            </CardContent>
+          </Card>
+          <RoutineBuilder exercises={exercises} routine={routine} setRoutine={setRoutine} />
+        </TabsContent>
+        <TabsContent value="workout">
+          {routine.length > 0 ? (
+            <WorkoutSession routine={routine} onComplete={completeWorkout} />
+          ) : (
+            <p>Build a routine in the Planner tab to start a workout.</p>
+          )}
+        </TabsContent>
+        <TabsContent value="history">
+          <ScrollArea className="h-[calc(100vh-200px)]">
+            {workoutHistory.map((workout, index) => (
+              <Card key={index} className="mb-4">
+                <CardHeader>
+                  <CardTitle>{workout.date}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <WorkoutSummary routine={workout.routine} />
+                </CardContent>
+              </Card>
+            ))}
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
+      <AlertDialog open={showAlert} onOpenChange={setShowAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>New Personal Best!</AlertDialogTitle>
+            <AlertDialogDescription>{alertMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowAlert(false)}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};
+
+export default App;
