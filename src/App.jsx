@@ -1,22 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectItem } from "@/components/ui/select";
-
-const predefinedExercises = [
-  { name: "Bench Press", category: "Chest" },
-  { name: "Squat", category: "Legs" },
-  // Add more exercises here
-];
+import React, { useState } from 'react';
+import { 
+  Card, CardContent, CardHeader, CardTitle, CardDescription, 
+  Button, Input, Select, Option, Tabs, TabsList, TabsContent, TabsTrigger 
+} from "@/components/ui";
 
 function App() {
-  const [exercises, setExercises] = useState(predefinedExercises);
-  const [currentRoutine, setCurrentRoutine] = useState([]);
+  const [exercises, setExercises] = useState([]);
+  const [routines, setRoutines] = useState([]);
+  const [currentRoutine, setCurrentRoutine] = useState(null);
   const [workoutHistory, setWorkoutHistory] = useState([]);
+
+  // Exercise Management
   const [newExercise, setNewExercise] = useState({ name: '', category: '' });
 
-  // Function to add a new exercise
   const addExercise = () => {
     if (newExercise.name && newExercise.category) {
       setExercises([...exercises, newExercise]);
@@ -24,129 +20,115 @@ function App() {
     }
   };
 
-  // Function to add exercise to routine
-  const addToRoutine = (exercise) => {
-    setCurrentRoutine([...currentRoutine, { ...exercise, sets: 0, reps: 0, weight: 0 }]);
+  // Routine Builder
+  const createRoutine = (name) => {
+    setRoutines([...routines, { name, exercises: [] }]);
   };
 
-  // Function to update routine exercise details
-  const updateRoutineExercise = (index, field, value) => {
-    const updatedRoutine = [...currentRoutine];
-    updatedRoutine[index][field] = value;
-    setCurrentRoutine(updatedRoutine);
-  };
-
-  // Function to finish workout
-  const finishWorkout = () => {
-    const workoutSummary = {
-      date: new Date(),
-      exercises: currentRoutine,
-      totalVolume: currentRoutine.reduce((acc, exercise) => 
-        acc + (exercise.sets * exercise.reps * exercise.weight), 0),
-      areasOfFocus: [...new Set(currentRoutine.map(e => e.category))],
+  const addExerciseToRoutine = (routine, exercise, sets, reps, weight) => {
+    const updatedRoutine = { ...routine, 
+      exercises: [...routine.exercises, { ...exercise, sets, reps, weight }] 
     };
-    setWorkoutHistory([...workoutHistory, workoutSummary]);
-    setCurrentRoutine([]);
+    setRoutines(routines.map(r => r.name === routine.name ? updatedRoutine : r));
   };
+
+  // Workout Session
+  const startWorkout = (routine) => setCurrentRoutine(routine);
+
+  const finishWorkout = () => {
+    const totalVolume = currentRoutine.exercises.reduce((acc, ex) => 
+      acc + ex.sets * ex.reps * ex.weight, 0);
+    const newBest = !workoutHistory.some(h => h.volume >= totalVolume);
+
+    setWorkoutHistory([...workoutHistory, {
+      date: new Date(),
+      routine: currentRoutine,
+      volume: totalVolume,
+      isBest: newBest
+    }]);
+    setCurrentRoutine(null);
+  };
+
+  // Helper Functions
+  const categories = [...new Set(exercises.map(ex => ex.category))];
 
   return (
-    <div className="p-4 space-y-4">
-      <Tabs currentTab="Planner">
-        <Tab title="Planner">
+    <div className="container mx-auto p-4">
+      <Tabs defaultValue="planner">
+        <TabsList>
+          <TabsTrigger value="planner">Planner</TabsTrigger>
+          <TabsTrigger value="workout">Workout</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+        </TabsList>
+        
+        {/* Planner Tab */}
+        <TabsContent value="planner">
           <Card>
             <CardHeader>
               <CardTitle>Add Exercise</CardTitle>
             </CardHeader>
-            <CardContent className="flex gap-2">
-              <Input 
-                placeholder="Exercise Name" 
-                value={newExercise.name} 
-                onChange={(e) => setNewExercise({...newExercise, name: e.target.value})} 
-              />
-              <Input 
-                placeholder="Category" 
-                value={newExercise.category} 
-                onChange={(e) => setNewExercise({...newExercise, category: e.target.value})} 
-              />
+            <CardContent>
+              <Input value={newExercise.name} onChange={(e) => setNewExercise({...newExercise, name: e.target.value})} placeholder="Exercise Name" />
+              <Select onValueChange={(value) => setNewExercise({...newExercise, category: value})}>
+                {categories.map(cat => <Option key={cat} value={cat}>{cat}</Option>)}
+              </Select>
               <Button onClick={addExercise}>Add</Button>
             </CardContent>
           </Card>
-          <Select onValueChange={exercise => addToRoutine(exercise)}>
-            <SelectItem value="">Select an exercise</SelectItem>
-            {exercises.map((ex, idx) => <SelectItem key={idx} value={ex}>{ex.name}</SelectItem>)}
-          </Select>
-          {currentRoutine.map((ex, idx) => (
-            <Card key={idx} className="mt-2">
+          
+          <Card>
+            <CardTitle>Create Routine</CardTitle>
+            <Input placeholder="Routine Name" onChange={(e) => createRoutine(e.target.value)} />
+            {routines.map(routine => (
+              <Card key={routine.name} className="mt-2">
+                <CardContent>
+                  {routine.exercises.map((ex, idx) => (
+                    <div key={idx}>
+                      {ex.name} - Sets: <Input type="number" onChange={(e) => addExerciseToRoutine(routine, ex, e.target.value, ex.reps, ex.weight)} />
+                      Reps: <Input type="number" onChange={(e) => addExerciseToRoutine(routine, ex, ex.sets, e.target.value, ex.weight)} />
+                      Weight: <Input type="number" onChange={(e) => addExerciseToRoutine(routine, ex, ex.sets, ex.reps, e.target.value)} />
+                    </div>
+                  ))}
+                  <Select>
+                    {exercises.map(ex => <Option key={ex.name} value={ex.name} onClick={() => addExerciseToRoutine(routine, ex, 0, 0, 0)}>{ex.name}</Option>)}
+                  </Select>
+                </CardContent>
+              </Card>
+            ))}
+          </Card>
+        </TabsContent>
+
+        {/* Workout Tab */}
+        <TabsContent value="workout">
+          {currentRoutine && (
+            <Card>
               <CardContent>
-                <Input 
-                  type="number" 
-                  placeholder="Sets" 
-                  value={ex.sets} 
-                  onChange={(e) => updateRoutineExercise(idx, 'sets', parseInt(e.target.value))} 
-                />
-                <Input 
-                  type="number" 
-                  placeholder="Reps" 
-                  value={ex.reps} 
-                  onChange={(e) => updateRoutineExercise(idx, 'reps', parseInt(e.target.value))} 
-                />
-                <Input 
-                  type="number" 
-                  placeholder="Weight (kg)" 
-                  value={ex.weight} 
-                  onChange={(e) => updateRoutineExercise(idx, 'weight', parseInt(e.target.value))} 
-                />
+                {currentRoutine.exercises.map((ex, idx) => (
+                  <div key={idx}>
+                    {ex.name} - {ex.sets} sets of {ex.reps} reps at {ex.weight}kg
+                  </div>
+                ))}
+                <Button disabled={currentRoutine.exercises.some(ex => !ex.completed)} onClick={finishWorkout}>Finish Workout</Button>
               </CardContent>
             </Card>
-          ))}
-        </Tab>
-        <Tab title="Workout">
-          {currentRoutine.map((ex, idx) => (
-            <Card key={idx}>
-              <CardTitle>{ex.name}</CardTitle>
-              {/* Here you would implement marking exercises as completed */}
-            </Card>
-          ))}
-          <Button disabled={currentRoutine.length === 0} onClick={finishWorkout}>Finish Workout</Button>
-        </Tab>
-        <Tab title="History">
+          )}
+        </TabsContent>
+
+        {/* History Tab */}
+        <TabsContent value="history">
           {workoutHistory.map((workout, idx) => (
             <Card key={idx}>
-              <CardHeader>
-                <CardTitle>{workout.date.toDateString()}</CardTitle>
-              </CardHeader>
               <CardContent>
-                <p>Total Volume: {workout.totalVolume} kg</p>
-                <p>Areas: {workout.areasOfFocus.join(', ')}</p>
+                <CardTitle>{workout.date.toLocaleDateString()}</CardTitle>
+                {workout.isBest && <p>New Personal Best!</p>}
+                <p>Volume: {workout.volume} kg</p>
               </CardContent>
             </Card>
           ))}
-        </Tab>
+        </TabsContent>
       </Tabs>
     </div>
   );
-}
-
-function Tabs({ children, currentTab }) {
-  return (
-    <div className="flex flex-col">
-      <div className="flex justify-around border-b mb-4">
-        {React.Children.map(children, (child, index) => (
-          <Button 
-            variant={child.props.title === currentTab ? 'default' : 'outline'}
-            onClick={() => { /* Here you would handle tab change logic */ }}
-          >
-            {child.props.title}
-          </Button>
-        ))}
-      </div>
-      {children.find(child => child.props.title === currentTab)}
-    </div>
-  );
-}
-
-function Tab({ children }) {
-  return <div>{children}</div>;
 }
 
 export default App;
