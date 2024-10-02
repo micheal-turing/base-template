@@ -12,6 +12,7 @@ const predefinedExercises = [
   { id: 1, name: "Push-ups", category: "Chest" },
   { id: 2, name: "Squats", category: "Legs" },
   { id: 3, name: "Pull-ups", category: "Back" },
+  
 ];
 
 const exerciseCategories = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Cardio", "Other"];
