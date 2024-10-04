@@ -9,21 +9,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from "@/components/ui/alert-dialog";
 
 const predefinedExercises = [
-  { id: 1, name: "Push-ups", category: "Chest" },
-  { id: 2, name: "Squats", category: "Legs" },
-  { id: 3, name: "Pull-ups", category: "Back" },
+  { id: "1", name: "Push-ups", category: "Chest" },
+  { id: "2", name: "Squats", category: "Legs" },
+  { id: "3", name: "Pull-ups", category: "Back" },
 ];
 
 const exerciseCategories = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Cardio", "Other"];
 
-const ExerciseSelector = ({ exercises, onSelect }) => (
-  <Select onValueChange={onSelect}>
+const ExerciseSelector = ({ exercises, onSelect, value }) => (
+  <Select onValueChange={onSelect} value={value}>
     <SelectTrigger className="w-full">
       <SelectValue placeholder="Select an exercise" />
     </SelectTrigger>
     <SelectContent>
       {exercises.map((exercise) => (
-        <SelectItem key={exercise.id} value={exercise.id.toString()}>
+        <SelectItem key={exercise.id} value={exercise.id}>
           {exercise.name}
         </SelectItem>
       ))}
@@ -32,20 +32,21 @@ const ExerciseSelector = ({ exercises, onSelect }) => (
 );
 
 const RoutineBuilder = ({ exercises, routine, setRoutine }) => {
-  const [selectedExercise, setSelectedExercise] = useState(null);
+  const [selectedExerciseId, setSelectedExerciseId] = useState(null);
 
   const addExerciseToRoutine = () => {
-    if (selectedExercise) {
-      const exercise = exercises.find((e) => e.id === parseInt(selectedExercise));
-      setRoutine([...routine, { ...exercise, sets: 3, reps: 10, weight: 0 }]);
-      setSelectedExercise(null);
+    if (selectedExerciseId) {
+      const exerciseToAdd = exercises.find((e) => e.id === selectedExerciseId);
+      if (exerciseToAdd) {
+        setRoutine([...routine, { ...exerciseToAdd, sets: 3, reps: 10, weight: 0 }]);
+        setSelectedExerciseId(null);
+      }
     }
   };
 
   const handleInputChange = (index, field, value) => {
     const newRoutine = [...routine];
-    // Convert empty string to 0, otherwise parse the value
-    newRoutine[index][field] = value === "" ? 0 : (field === "weight" ? parseFloat(value) : parseInt(value));
+    newRoutine[index][field] = value === "" ? 0 : (field === "weight" ? parseFloat(value) || 0 : parseInt(value) || 0);
     setRoutine(newRoutine);
   };
 
@@ -56,11 +57,15 @@ const RoutineBuilder = ({ exercises, routine, setRoutine }) => {
       </CardHeader>
       <CardContent>
         <div className="flex mb-4">
-          <ExerciseSelector exercises={exercises} onSelect={setSelectedExercise} />
+          <ExerciseSelector
+            exercises={exercises}
+            onSelect={setSelectedExerciseId}
+            value={selectedExerciseId || ""}
+          />
           <Button onClick={addExerciseToRoutine} className="ml-2">Add</Button>
         </div>
         {routine.map((exercise, index) => (
-          <Card key={index} className="mb-4 p-4">
+          <Card key={`${exercise.id}-${index}`} className="mb-4 p-4">
             <h4 className="font-bold mb-2">{exercise.name}</h4>
             <div className="grid grid-cols-3 gap-2 mb-2">
               <div>
@@ -184,7 +189,7 @@ const App = () => {
   const addCustomExercise = useCallback(() => {
     if (newExerciseName && newExerciseCategory) {
       const newExercise = {
-        id: exercises.length + 1,
+        id: Date.now().toString(), // Use timestamp as a unique ID, converted to string
         name: newExerciseName,
         category: newExerciseCategory,
       };
