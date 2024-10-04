@@ -38,7 +38,11 @@ export default function App() {
 
   const addHabit = (e) => {
     e.preventDefault();
-    if (newHabit.name.trim() === "" || newHabit.category === "Select category") return;
+    if (newHabit.name.trim() === "" || newHabit.category === "Select category"){
+       alert('Select a category')
+      return;
+    }
+
     const habit = { ...newHabit, id: Date.now(), streak: 0, completions: {} };
     setHabits([...habits, habit]);
     setNewHabit({
@@ -179,8 +183,10 @@ export default function App() {
                 <Calendar
                   mode="single"
                   selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  className={`rounded-md border ${darkMode ? "bg-gray-700 text-white" : "bg-white"} mb-4`}
+                  onSelect={(date) => setSelectedDate(date || new Date())}
+                  className={`rounded-md border ${darkMode ? "bg-gray-700 text-white" : "bg-white "} mb-4`}
+                  classNames={{day_today: `bg-neutral-100 ${darkMode ? 'text-black' : 'text-white '} dark:bg-white text-white`,
+  }}
                 />
                 <div className="w-full max-w-md">
                   <h3 className="font-bold mb-2">Habits for {selectedDate.toDateString()}:</h3>
